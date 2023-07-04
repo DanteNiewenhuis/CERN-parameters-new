@@ -110,7 +110,17 @@ def get_memory_usage_decrease(memory_usage: float, base_memory_usage: float) -> 
     return ((base_memory_usage - memory_usage) / base_memory_usage) * 100
 
 
-def get_performance(performance_values: list[float], weights: list[float] = None):
+def get_performance(performance_values: list[float], weights: list[float] = None) -> float:
+    """ Get the aggragated performance by taking the mean of the results. 
+        If weights are given it becomes a weighted avarage
+
+    Args:
+        performance_values (list[float])
+        weights (list[float], optional): All metrics are weighted equally, if no weights are given
+
+    Returns:
+        float: A single performance measure
+    """
 
     if weights is None:
         return np.mean(performance_values)
@@ -227,8 +237,12 @@ def generate_file(path_to_generator: Path, path_to_reference_file: Path, compres
         print(f"output file already available => {path_to_output.resolve()}")
         return path_to_output
 
-    os.system(
+    status, result_str = subprocess.getstatusoutput(
         f"{path_to_generator.resolve()} -i {path_to_reference_file.resolve()} -o {path_to_output_folder.resolve()} -c {compression_type} -p {page_size} -x {cluster_size}")
+
+    if status != 0:
+        raise ValueError(
+            f"Error {status} raised when generating file: {path_to_output.resolve()}\n error message provided: {result_str}")
 
     return path_to_output
 
@@ -290,7 +304,7 @@ def evaluate_parameters(benchmark: str, compression_type: str, cluster_size: int
         remove_generated_file (bool, optional): remove the generated file at the end of the evaluation, Default is True
 
     Returns:
-        tuple[list,list,list]: file_size, list of throughputs, and list of memory usage
+        tuple[int,list[float],list[float]]: file_size, list of throughputs, and list of memory usage
     """
 
     print(
@@ -320,6 +334,15 @@ def evaluate_parameters(benchmark: str, compression_type: str, cluster_size: int
 
 
 def evaluate_default_parameters(benchmark: str, evaluations: int = 10) -> tuple[int, list[float], list[float]]:
+    """ Get the performance of the default parameters usingf the basic evaluate_parameter function
+
+    Args:
+        benchmark (str):
+        evaluations (int, optional): Defaults to 10.
+
+    Returns:
+        tuple[int,list[float],list[float]]: file_size, list of throughputs, and list of memory usage
+    """
 
     return evaluate_parameters(benchmark, default_variable_values["compression_type"], default_variable_values["cluster_size"],
                                default_variable_values["page_size"], default_variable_values["cluster_bunch"],
